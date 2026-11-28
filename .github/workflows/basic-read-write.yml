@@ -1,0 +1,36 @@
+name: 双端基本读写
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  notes:
+    name: ${{ matrix.os }} x64 · 最小笔记
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          architecture: x64
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @noyau-example/desktop exec install-electron
+      - run: pnpm build
+      - name: Windows 主窗口和本机网页
+        if: runner.os == 'Windows'
+        run: pnpm test
+      - name: Ubuntu 主窗口和本机网页
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test

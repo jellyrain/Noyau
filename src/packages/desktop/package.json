@@ -1,0 +1,16 @@
+{
+  "name": "@noyau/desktop",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@noyau/core": "workspace:0.1.0",
+    "@noyau/extension-contract": "workspace:0.1.0"
+  },
+  "peerDependencies": {
+    "electron": "45.5.0"
+  }
+}

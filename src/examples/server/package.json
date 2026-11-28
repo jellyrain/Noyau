@@ -1,0 +1,10 @@
+{
+  "name": "@noyau-example/server",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.cjs",
+  "dependencies": {
+    "@noyau-example/notes": "workspace:0.1.0",
+    "@noyau/server": "workspace:0.1.0"
+  }
+}

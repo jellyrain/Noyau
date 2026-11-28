@@ -1,0 +1,9 @@
+{
+  "name": "@noyau-example/notes",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "dependencies": {
+    "@noyau/extension-contract": "workspace:0.1.0"
+  }
+}

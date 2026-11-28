@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'">
+  <title>笔记</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f8f6f0; color: #242c28; font: 1rem/1.6 "Source Sans 3", system-ui, sans-serif; }
+    main { max-width: 46rem; margin: clamp(2rem, 7vh, 5rem) auto; padding: 0 1.5rem; }
+    header, footer { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    header { border-bottom: 2px solid #32493b; }
+    h1 { margin: 0 0 .5rem; font: 500 2.4rem/1.4 "Noto Serif CJK SC", serif; }
+    small, output { color: #526254; }
+    fieldset { margin: 1.5rem 0 0; padding: 0; border: 0; min-width: 0; }
+    label { display: block; margin: 1.2rem 0 .4rem; font-weight: 600; }
+    input, textarea { display: block; width: 100%; padding: .65rem .85rem; color: inherit; background: #fffefa; border: 1px solid #a9b1a8; border-radius: .3rem; font: inherit; }
+    textarea { min-height: 14rem; resize: vertical; }
+    :focus-visible { outline: 2px solid #38664b; outline-offset: 2px; }
+    footer { margin-top: 1rem; }
+    button { background: #304d3a; color: white; border: 0; border-radius: .3rem; padding: .55rem 1.5rem; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: default; }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>笔记</h1><small aria-label="框架版本" id="version"></small></header>
+    <form id="editor">
+      <fieldset id="fields" disabled>
+        <label for="title">标题</label>
+        <input id="title" name="title" type="text">
+        <label for="body">正文</label>
+        <textarea id="body" name="body"></textarea>
+      </fieldset>
+      <footer>
+        <output id="status" aria-live="polite">正在读取…</output>
+        <button type="submit" disabled>保存</button>
+      </footer>
+    </form>
+  </main>
+  <script>
+    const form = document.querySelector('#editor');
+    const title = form.elements.title;
+    const body = form.elements.body;
+    const status = document.querySelector('#status');
+    const button = form.querySelector('button');
+    let revision = 0;
+
+    async function load() {
+      const response = await fetch('/api/data');
+      if (!response.ok) throw new Error();
+      const { data, version } = await response.json();
+      title.value = data.title;
+      body.value = data.body;
+      document.querySelector('#version').textContent = 'Noyau ' + version;
+      document.querySelector('#fields').disabled = false;
+      button.disabled = false;
+      status.textContent = '';
+    }
+
+    form.addEventListener('input', () => {
+      revision++;
+      status.textContent = '有未保存的修改';
+    });
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (button.disabled) return;
+      button.disabled = true;
+      const submitted = revision;
+      status.textContent = '正在保存…';
+      try {
+        const response = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: title.value, body: body.value }),
+        });
+        if (response.status >= 400 && response.status < 500) {
+          status.textContent = response.status === 413
+            ? '未保存，笔记超过单次保存的大小限制'
+            : '未保存，提交被拒绝（HTTP ' + response.status + '）';
+          return;
+        }
+        if (!response.ok) throw new Error();
+        status.textContent = submitted === revision ? '已保存' : '有未保存的修改';
+      } catch {
+        status.textContent = '保存结果待确认，请重新打开核对';
+      } finally {
+        button.disabled = false;
+      }
+    });
+    load().catch(() => { status.textContent = '无法读取笔记，请重新打开'; });
+  </script>
+</body>
+</html>
