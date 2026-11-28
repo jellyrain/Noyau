@@ -18,11 +18,11 @@ function inside(root: string, file: string) {
 }
 
 export function loadPages(page: string, directory: string) {
-  const source = realpathSync(page);
+  const source = realpathSync.native(page);
   const root = statSync(source).isDirectory() ? source : undefined;
-  const entry = root ? realpathSync(join(root, 'index.html')) : source;
+  const entry = root ? realpathSync.native(join(root, 'index.html')) : source;
   if (root && !inside(root, entry)) throw new Error('index.html 必须位于产品构建目录内');
-  if (root && inside(root, realpathSync(directory))) throw new Error('资料目录必须位于公开的前端构建目录以外');
+  if (root && inside(root, realpathSync.native(directory))) throw new Error('资料目录必须位于公开的前端构建目录以外');
   const html = readFileSync(entry, 'utf8');
 
   async function serve(request: Request, pathname: string) {

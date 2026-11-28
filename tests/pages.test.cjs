@@ -23,6 +23,7 @@ test('构建目录提供静态资源和前端导航，业务地址独立分发',
   server = await serve({ page, modules: [extension] }, directory, 0);
   const get = (path, options) => fetch(server.url + path, options);
   const script = await get('/编辑器.mjs?v=42');
+  assert.equal(script.status, 200);
   assert.match(script.headers.get('content-type'), /javascript/);
   assert.equal(await script.text(), 'export default 42');
   const navigation = { headers: { accept: 'text/html' } };
