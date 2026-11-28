@@ -6,7 +6,7 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node src/examples/notes/build.mjs",
     "typecheck": "tsc -b --pretty false",
     "desktop": "pnpm --filter @noyau-example/desktop start",
     "serve": "node src/examples/server",
@@ -14,7 +14,12 @@
   },
   "devDependencies": {
     "@types/node": "24.10.1",
+    "@vitejs/plugin-vue": "6.0.11",
     "playwright-core": "1.65.1",
-    "typescript": "5.9.3"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "typescript": "5.9.3",
+    "vite": "8.4.0",
+    "vue": "3.5.46"
   }
 }

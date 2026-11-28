@@ -1,9 +1,10 @@
-const { defaultDirectory, notes } = require('@noyau-example/notes');
+const { parseArgs } = require('node:util');
+const { defaultDirectory, createNotesProduct } = require('@noyau-example/notes');
 const { serve } = require('@noyau/server');
 
-const directory = process.argv[2] ?? defaultDirectory;
-const port = Number(process.argv[3] ?? 3210);
-serve(notes, directory, port).then(server => {
+const { positionals, values } = parseArgs({ allowPositionals: true, options: { ui: { type: 'string' } } });
+const [directory = defaultDirectory, port = '3210'] = positionals;
+serve(createNotesProduct(values.ui), directory, Number(port)).then(server => {
   process.once('SIGINT', server.close);
   process.once('SIGTERM', server.close);
   console.log(server.url);

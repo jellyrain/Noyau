@@ -30,8 +30,8 @@ function checkFrameworkVersions(runtime, t) {
   return expected;
 }
 
-async function startServer(directory) {
-  const child = spawn(process.execPath, [path.join(examples, 'server'), directory, '0'], {
+async function startServer(directory, ui) {
+  const child = spawn(process.execPath, [path.join(examples, 'server'), directory, '0', '--ui=' + ui], {
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   const exited = once(child, 'exit');
@@ -51,7 +51,7 @@ async function startServer(directory) {
   }
 }
 
-async function editAndReopen(runtime, open, t) {
+async function editAndReopen(runtime, ui, open, t) {
   const expectedVersion = checkFrameworkVersions(runtime, t);
   const directory = await mkdtemp(path.join(tmpdir(), 'noyau-notes-'));
   try {
@@ -69,10 +69,13 @@ async function editAndReopen(runtime, open, t) {
     const reopened = await open(directory);
     try {
       await reopened.page.getByText(`Noyau ${expectedVersion}`, { exact: true }).waitFor();
+      await reopened.page.goto(new URL('/notes/first', reopened.page.url()).href);
+      await reopened.page.getByText(`Noyau ${expectedVersion}`, { exact: true }).waitFor();
       const title = await reopened.page.getByLabel('标题').inputValue();
       const body = await reopened.page.getByLabel('正文').inputValue();
+      assert.equal(await reopened.page.getByLabel('正文').evaluate(field => getComputedStyle(field).resize), 'vertical');
       const version = await reopened.page.getByLabel('框架版本').textContent();
-      t.diagnostic(JSON.stringify({ platform: process.platform, arch: process.arch, version, title, body }));
+      t.diagnostic(JSON.stringify({ platform: process.platform, arch: process.arch, ui, version, title, body }));
       assert.deepEqual({ title, body }, { title: '首条笔记', body: '原文 A' });
     } finally {
       await reopened.close();
@@ -82,38 +85,39 @@ async function editAndReopen(runtime, open, t) {
   }
 }
 
-test('独立 Server 在本机产品页保存后退出，重开读回标题与正文', { timeout: 90000 }, async t => {
-  const browser = await chromium.launch({ channel: 'chrome' });
-  try {
-    await editAndReopen('server', async directory => {
-      const server = await startServer(directory);
+for (const ui of ['vue', 'react']) {
+  test(`独立 Server 在 ${ui} 本机产品页保存后退出，重开读回标题与正文`, { timeout: 90000 }, async t => {
+    const browser = await chromium.launch({ channel: 'chrome' });
+    try {
+      await editAndReopen('server', ui, async directory => {
+        const server = await startServer(directory, ui);
+        try {
+          const page = await browser.newPage();
+          await page.goto(server.url);
+          return { page, close: async () => { await page.close(); await server.close(); } };
+        } catch (error) {
+          await server.close();
+          throw error;
+        }
+      }, t);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  test(`桌面 App 在 ${ui} 主窗口保存后退出，重开读回标题与正文`, { timeout: 90000 }, async t => {
+    await editAndReopen('desktop', ui, async directory => {
+      const app = await electron.launch({
+        args: [path.join(examples, 'desktop'), '--data-dir=' + directory, '--ui=' + ui],
+        executablePath: createRequire(path.join(examples, 'desktop/package.json'))('electron'),
+      });
       try {
-        // 每次新建浏览器上下文，从资料目录读回结果。
-        const page = await browser.newPage();
-        await page.goto(server.url);
-        return { page, close: async () => { await page.close(); await server.close(); } };
+        const page = await app.firstWindow();
+        return { page, close: () => app.close() };
       } catch (error) {
-        await server.close();
+        await app.close();
         throw error;
       }
     }, t);
-  } finally {
-    await browser.close();
-  }
-});
-
-test('桌面 App 在 Electron 主窗口保存后退出，重开读回标题与正文', { timeout: 90000 }, async t => {
-  await editAndReopen('desktop', async directory => {
-    const app = await electron.launch({
-      args: [path.join(examples, 'desktop'), '--data-dir=' + directory],
-      executablePath: createRequire(path.join(examples, 'desktop/package.json'))('electron'),
-    });
-    try {
-      const page = await app.firstWindow();
-      return { page, close: () => app.close() };
-    } catch (error) {
-      await app.close();
-      throw error;
-    }
-  }, t);
-});
+  });
+}

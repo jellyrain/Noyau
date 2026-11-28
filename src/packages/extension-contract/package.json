@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client.mjs",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist"
   ]

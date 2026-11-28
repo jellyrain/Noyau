@@ -1,14 +1,14 @@
 import { app, BrowserWindow, protocol } from 'electron';
 import { openProduct } from '@noyau/core';
-import type { Product } from '@noyau/extension-contract';
+import type { ProductEntry } from '@noyau/extension-contract';
 
 const pageUrl = 'noyau://product/';
 
-/** 从 Electron 主进程入口调用，在 ready 前注册产品页的协议。 */
-export async function runDesktop(product: Product, directory: string) {
+/** 须在 Electron 主进程的 ready 事件前调用。 */
+export async function runDesktop(product: ProductEntry, directory: string) {
   protocol.registerSchemesAsPrivileged([{
     scheme: 'noyau',
-    privileges: { standard: true, secure: true, supportFetchAPI: true },
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
   }]);
   await app.whenReady();
   const session = openProduct(product, directory);
@@ -16,9 +16,16 @@ export async function runDesktop(product: Product, directory: string) {
     if (!request.url.startsWith(pageUrl)) return new Response(null, { status: 404 });
     return session.handle(request);
   });
-  app.once('will-quit', () => {
+  app.once('will-quit', event => {
     protocol.unhandle('noyau');
-    session.close();
+    const draining = session.close();
+    if (draining) {
+      event.preventDefault();
+      draining.then(() => setImmediate(() => app.quit()), error => {
+        console.error(error);
+        app.exit(1);
+      });
+    }
   });
   app.on('window-all-closed', () => app.quit());
 
